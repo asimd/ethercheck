@@ -1,15 +1,14 @@
-Small python script to convert list of Ethereum private keys into public addresses and check for current balance, total in and total out of that address. 
+Small python script to convert list of Ethereum private keys into public addresses and check for current balance of the address.
 
-Install requirements: 
-
+#Requirements: 
 ```python
-python 3.*
+python 3
 ```
 
-Usage:
+#Usage:
 ```python
 git clone git@github.com:asimd/ethercheck.git
-pip3 install pybitcointools
+pip3 install ethereum binascii requests time 
 python3 eth.py
 ```
 
