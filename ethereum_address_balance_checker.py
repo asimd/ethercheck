@@ -6,7 +6,7 @@ import sys
 import json
 
 # Infura Project ID
-INFURA_PROJECT_ID = '9071bae74ae946d5854cca16d3932705'
+INFURA_PROJECT_ID = 'YOUR_INFURA_PROJECT_ID_HERE'
 INFURA_URL = f'https://mainnet.infura.io/v3/{INFURA_PROJECT_ID}'
 
 # Initialize Web3 with Infura endpoint
