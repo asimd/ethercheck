@@ -1,43 +1,84 @@
-Small python script that converts the list of Ethereum private keys into public addresses and checks the current balance of the address.
+# Ethereum and Token Balance Checker
 
-Requirements: 
-```python
-python 3
+This Python script allows you to check Ethereum (ETH) and ERC-20 token balances for multiple Ethereum addresses using their private keys. It utilizes the Web3.py library and Infura's Ethereum node service to interact with the Ethereum blockchain.
+
+## Features
+
+- Check ETH balance for multiple Ethereum addresses
+- Check balances for 100+ popular ERC-20 tokens
+- Concurrent processing for faster results
+- Proper handling of tokens with different decimal places
+- Formatted output for easy readability
+- Progress bar to track the checking process
+- Results saved to a text file
+
+## Prerequisites
+
+- Python 3.7 or higher
+- pip (Python package installer)
+
+## Setup
+
+1. Clone this repository or download the script.
+
+2. Install the required Python packages:
+   ```
+   pip install web3 tqdm
+   ```
+
+3. Sign up for a free account at [Infura](https://infura.io/) and create a new project to get your Project ID.
+
+4. Open the script and replace the `INFURA_PROJECT_ID` value with your Infura Project ID:
+   ```python
+   INFURA_PROJECT_ID = 'YOUR_INFURA_PROJECT_ID_HERE'
+   ```
+
+5. Create a text file named `ethereum_private_keys.txt` in the same directory as the script. Add one Ethereum private key per line in this file.
+
+## Usage
+
+1. Run the script:
+   ```
+   python ethereum_balance_checker.py
+   ```
+
+2. The script will process each private key, checking balances for ETH and all configured ERC-20 tokens.
+
+3. Progress will be displayed in the console, showing which addresses have balances.
+
+4. After completion, results will be saved in `ethereum_and_token_balances.txt`.
+
+## Output
+
+The script will display balance information in the console and save it to a file. The output format is as follows:
+
+```
+Found balances for address: 0x1234...5678
+Private Key: 0xabcd...efgh
+ETH Balance: 1.2345
+USDT Balance: 100.0000
+USDC Balance: 50.5000
+... (other token balances)
 ```
 
-Usage:
-```python
-git clone git@github.com:asimd/ethercheck.git
-pip3 install ethereum binascii requests time 
-python3 eth.py
-```
+## Customization
 
-This tool uses Google [BigQueryDB](https://cloud.google.com/bigquery/) query results as input. 
-That input comes from scanning regex expression for all public Github repos matching the Ethereum private key.
+- To add or remove tokens, modify the `TOKENS_TO_CHECK` dictionary in the script.
+- Adjust the `MIN_BALANCE` value to change the minimum balance threshold for display.
+- Modify the `TOKEN_DECIMALS` dictionary if you need to add or change decimal places for specific tokens.
 
-BigQueryDB query:
-``` 
-#standardSQL
-SELECT f.repo_name, f.path, c.pkey
-FROM `bigquery-public-data.github_repos.files` f JOIN
-     (SELECT id,
-             REGEXP_EXTRACT(content, r'(?:^|[^a-zA-Z0=9])([123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ]{64,64})(?:$|[^a-zA-Z0-9])') AS pkey
-      FROM `bigquery-public-data.github_repos.contents`
-      WHERE REGEXP_CONTAINS(content, r'(?:^|[^a-zA-Z0=9])([123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ]{64,64})(?:$|[^a-zA-Z0-9])')
-     ) c
-     ON f.id = c.id;
+## Security Note
 
-```
+This script requires access to private keys. Ensure you're running it in a secure environment and never share your private keys or the resulting output file with untrusted parties.
 
-After that, it uses [Etherscan's](http://etherscan.io) public API to check the balances for the given address.
+## Disclaimer
 
-Note: you may be rate limited if triggering too many ruquests, sign up for API key [HERE](https://etherscan.io/) 
+This script is for educational and personal use only. Use it at your own risk. Always verify important financial information through official sources.
 
+## Contributing
 
-Usage Example:
-![ethercheck](https://i.imgur.com/Fe1fNwp.png)
+Contributions, issues, and feature requests are welcome. Feel free to check [issues page](https://github.com/yourusername/ethereum-balance-checker/issues) if you want to contribute.
 
+## License
 
-Any suggestions, fixes or PR's are more then welcome.
-
-Update: Added normalized CSV for testing purposes.
+[MIT](https://choosealicense.com/licenses/mit/)
