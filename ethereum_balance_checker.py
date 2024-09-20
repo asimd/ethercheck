@@ -7,7 +7,7 @@ import sys
 import json
 
 # Infura Project ID
-INFURA_PROJECT_ID = 'YOURINFURAPROJECTIDHERE'
+INFURA_PROJECT_ID = '9071bae74ae946d5854cca16d3932705'
 INFURA_URL = f'https://mainnet.infura.io/v3/{INFURA_PROJECT_ID}'
 
 # Initialize Web3 with Infura endpoint
@@ -208,7 +208,7 @@ def process_key(priv):
         print(f"Error processing key: {e}")
     return None
 
-def save_results_to_txt(results, filename='ethereum_and_token_balances.txt'):
+def save_results_to_txt(results, filename='data/ethereum_and_token_balances.txt'):
     with open(filename, 'w') as txtfile:
         for addr, balances, priv in results:
             txtfile.write(f"Address: {addr}\n")
@@ -220,7 +220,7 @@ def save_results_to_txt(results, filename='ethereum_and_token_balances.txt'):
 
 def main():
     # Read private keys from file
-    with open('ethereum_private_keys.txt', 'r') as file:
+    with open('data/ethereum_private_keys.txt', 'r') as file:
         private_keys = [line.strip() for line in file if line.strip()]
 
     results = []
