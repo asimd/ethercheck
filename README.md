@@ -105,3 +105,8 @@ Contributions, issues, and feature requests are welcome. Feel free to check [iss
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
+
+## Support the Project
+If you find this tool useful, you can buy me a coffee:
+
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/asimd)
