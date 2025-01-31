@@ -5,13 +5,42 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 import sys
 import json
+import re
+import random
+import time
 
-# Infura Project ID
-INFURA_PROJECT_ID = 'YOUR_INFURA_PROJECT_ID_HERE'
-INFURA_URL = f'https://mainnet.infura.io/v3/{INFURA_PROJECT_ID}'
+# List of Infura Project IDs
+INFURA_PROJECT_IDS = [
+    'ID1',
+    'ID2',
+    'ID3',
+    'ID4',
+    'ID5',
+    'ID6',
+    'ID7',
+    'ID8',
+    'ID9',
+    'ID10',
+]
 
-# Initialize Web3 with Infura endpoint
-w3 = Web3(Web3.HTTPProvider(INFURA_URL))
+w3_instances = []
+current_w3_index = 0
+rate_limited_endpoints = set()
+terminate_script = False
+
+# Create Web3 instances for each Infura Project ID
+for project_id in INFURA_PROJECT_IDS:
+    infura_url = f'https://mainnet.infura.io/v3/{project_id}'
+    w3_instances.append(Web3(Web3.HTTPProvider(infura_url)))
+
+def get_working_w3():
+    global current_w3_index
+    return w3_instances[current_w3_index]
+
+def switch_to_next_w3():
+    global current_w3_index, rate_limit_429_errors
+    current_w3_index = (current_w3_index + 1) % len(w3_instances)
+    print(f"Switching to next Infura endpoint: {current_w3_index}")
 
 # Minimum balance threshold (in Ether or tokens)
 MIN_BALANCE = 0.01
@@ -139,6 +168,40 @@ TOKENS_TO_CHECK = {
     'FXS': '0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0'
 }
 
+# Global set to keep track of processed keys
+processed_keys = set()
+
+def remove_processed_keys_from_file(filename):
+    global processed_keys
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+    with open(filename, 'w') as file:
+        for line in lines:
+            if line.strip() not in processed_keys:
+                file.write(line)
+    processed_keys.clear()
+    print(f"Removed {len(processed_keys)} processed keys from {filename}")
+
+
+def is_valid_private_key(key):
+    # Ethereum private keys are 64-character long hexadecimal strings
+    if re.fullmatch(r'[a-fA-F0-9]{64}', key):
+        return True
+    return False
+
+def clean_private_keys_file(input_file):
+    with open(input_file, 'r') as infile:
+        private_keys = [line.strip() for line in infile if line.strip()]
+
+    valid_keys = [key for key in private_keys if is_valid_private_key(key)]
+
+    # Overwrite the original file with valid keys
+    with open(input_file, 'w') as outfile:
+        for key in valid_keys:
+            outfile.write(f"{key}\n")
+
+    print(f"Invalid keys removed. Total valid keys: {len(valid_keys)}")
+
 def format_balance(balance, decimals):
     if balance == 0:
         return None
@@ -150,104 +213,153 @@ def format_balance(balance, decimals):
     else:
         return f"{adjusted_balance:.4f}"
 
-def get_all_balances(address):
-    multicall = w3.eth.contract(address=MULTICALL_ADDRESS, abi=MULTICALL_ABI)
-    erc20_contract = w3.eth.contract(abi=ERC20_ABI)
+def process_balances(eth_balance, return_data):
+    balances = {}
 
-    calls = []
-    tokens = list(TOKENS_TO_CHECK.items())
+    # Process ETH balance
+    eth_formatted = format_balance(eth_balance, 18)
+    if eth_formatted:
+        balances['ETH'] = eth_formatted
+
+    # Process token balances
+    for (token_name, token_address), data in zip(TOKENS_TO_CHECK.items(), return_data):
+        try:
+            balance = int(data.hex(), 16)
+            if balance > 0:
+                decimals = TOKEN_DECIMALS.get(token_name, 18)
+                formatted_balance = format_balance(balance, decimals)
+                if formatted_balance:
+                    balances[token_name] = formatted_balance
+        except ValueError as ve:
+            print(f"Error parsing balance for {token_name}: {ve}")
+        except Exception as e:
+            print(f"Unexpected error for {token_name}: {e}")
     
-    for _, token_address in tokens:
-        calls.append((
-            Web3.to_checksum_address(token_address),
-            erc20_contract.encodeABI("balanceOf", [address])
-        ))
+    return balances
 
+def get_all_balances(address):
+    global current_w3_index, rate_limited_endpoints, terminate_script
+    
     try:
-        # Get ETH balance separately
+        w3 = get_working_w3()
+        multicall = w3.eth.contract(address=MULTICALL_ADDRESS, abi=MULTICALL_ABI)
+
+        # Fetch ETH balance
         eth_balance = w3.eth.get_balance(address)
+
+        calls = []
+        tokens = list(TOKENS_TO_CHECK.items())
         
-        # Get token balances
+        for token_name, token_address in tokens:
+            # Create contract instance for each token
+            token_contract = w3.eth.contract(
+                address=Web3.to_checksum_address(token_address),
+                abi=ERC20_ABI
+            )
+            # Get the function data
+            call_data = token_contract.functions.balanceOf(address)._encode_transaction_data()
+            calls.append((
+                Web3.to_checksum_address(token_address),
+                call_data
+            ))
+
+        # Execute the multicall to fetch token balances
         _, return_data = multicall.functions.aggregate(calls).call()
 
-        balances = {}
-        
-        # Add ETH balance
-        eth_formatted = format_balance(eth_balance, 18)
-        if eth_formatted:
-            balances['ETH'] = eth_formatted
-
-        # Process token balances
-        for (token_name, _), data in zip(tokens, return_data):
-            try:
-                balance = int(data.hex(), 16)
-                if balance > 0:
-                    decimals = TOKEN_DECIMALS.get(token_name, 18)
-                    formatted_balance = format_balance(balance, decimals)
-                    if formatted_balance:
-                        balances[token_name] = formatted_balance
-            except ValueError as ve:
-                print(f"Error parsing balance for {token_name}: {ve}")
-            except Exception as e:
-                print(f"Unexpected error for {token_name}: {e}")
-
+        # Process the ETH and token balances
+        balances = process_balances(eth_balance, return_data)
         return balances
+    
     except Exception as e:
-        print(f"Error getting balances for {address}: {e}")
+        if "429" in str(e):
+            print(f"Endpoint {current_w3_index} rate-limited (429).")
+            rate_limited_endpoints.add(current_w3_index)
+            if len(rate_limited_endpoints) == len(INFURA_PROJECT_IDS):
+                print("All endpoints rate-limited. Terminating script.")
+                terminate_script = True
+                return None
+        elif "401" in str(e):
+            print(f"Unauthorized access: {e}. Skipping to next endpoint.")
+        else:
+            print(f"Error processing address {address}: {e}")
+        
+        switch_to_next_w3()
         return None
 
 def process_key(priv):
+    global terminate_script
+    if terminate_script:
+        return None
     try:
         account = Account.from_key(priv)
         eth_addr = account.address
         balances = get_all_balances(eth_addr)
         
         if balances:
+            # Print to console immediately when balance is found
+            print("\nFound balance!")
+            print(f"Address: {eth_addr}")
+            print(f"Private Key: {priv}")
+            for token, balance in balances.items():
+                print(f"{token} Balance: {balance}")
+            print("-" * 50)
             return (eth_addr, balances, priv)
     except Exception as e:
         print(f"Error processing key: {e}")
     return None
 
 def save_results_to_txt(results, filename='data/ethereum_and_token_balances.txt'):
-    with open(filename, 'w') as txtfile:
+    with open(filename, 'a') as txtfile:
         for addr, balances, priv in results:
             txtfile.write(f"Address: {addr}\n")
             txtfile.write(f"Private Key: {priv}\n")
             for token, balance in balances.items():
                 txtfile.write(f"{token} Balance: {balance}\n")
             txtfile.write("\n")
-    print(f"\nResults saved to {filename}")
+    print(f"\nResults appended to {filename}")
 
 def main():
-    # Read private keys from file
-    with open('data/ethereum_private_keys.txt', 'r') as file:
+    global input_file, terminate_script
+    input_file = 'data/ethereum_private_keys.txt'
+
+    print("Cleaning private keys file...")
+    clean_private_keys_file(input_file)
+
+    with open(input_file, 'r') as file:
         private_keys = [line.strip() for line in file if line.strip()]
 
-    results = []
+    if not private_keys:
+        print("No valid private keys found. Exiting.")
+        return
+
     total_keys = len(private_keys)
 
-    # Use ThreadPoolExecutor for concurrent processing
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    print(f"Checking {total_keys} valid private keys...")
+    
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [executor.submit(process_key, priv) for priv in private_keys]
-        
+
         with tqdm(total=total_keys, desc="Checking keys", unit="key") as pbar:
             for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    addr, balances, priv = result
-                    results.append(result)
-                    print(f"\nFound balances for address: {addr}")
-                    print(f"Private Key: {priv}")
-                    for token, balance in balances.items():
-                        print(f"{token} Balance: {balance}")
-                pbar.update(1)
-                sys.stdout.flush()  # Ensure output is immediately displayed
+                if terminate_script:
+                    executor.shutdown(wait=False)
+                    print("Script terminated due to all endpoints being rate-limited.")
+                    return
 
-    # Save results to TXT
-    if results:
-        save_results_to_txt(results)
-    else:
-        print("\nNo addresses with balance found.")
+                try:
+                    result = future.result()
+
+                    if result:
+                        addr, balances, priv = result
+                        save_results_to_txt([(addr, balances, priv)])
+                        
+                except Exception as e:
+                    print(f"Error processing future: {e}")
+                
+                pbar.update(1)
+
+    print("\nScript completed.")
+    remove_processed_keys_from_file(input_file)
 
 if __name__ == "__main__":
     main()

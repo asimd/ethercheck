@@ -6,7 +6,7 @@ import sys
 import json
 
 # Infura Project ID
-INFURA_PROJECT_ID = 'YOUR_INFURA_PROJECT_ID_HERE'
+INFURA_PROJECT_ID = ''
 INFURA_URL = f'https://mainnet.infura.io/v3/{INFURA_PROJECT_ID}'
 
 # Initialize Web3 with Infura endpoint
@@ -60,25 +60,32 @@ def format_balance(balance, decimals):
         return f"{adjusted_balance:.4f}"
 
 def get_all_balances(address):
-    multicall = w3.eth.contract(address=MULTICALL_ADDRESS, abi=MULTICALL_ABI)
-    erc20_contract = w3.eth.contract(abi=ERC20_ABI)
-
-    calls = []
-    tokens = list(TOKENS_TO_CHECK.items())
-    
-    for _, token_address in tokens:
-        calls.append((
-            Web3.to_checksum_address(token_address),
-            erc20_contract.encodeABI("balanceOf", [address])
-        ))
-
     try:
-        # Get ETH balance separately
+        multicall = w3.eth.contract(address=MULTICALL_ADDRESS, abi=MULTICALL_ABI)
+
+        # Fetch ETH balance
         eth_balance = w3.eth.get_balance(address)
+
+        calls = []
+        tokens = list(TOKENS_TO_CHECK.items())
         
-        # Get token balances
+        for token_name, token_address in tokens:
+            # Create contract instance for each token
+            token_contract = w3.eth.contract(
+                address=Web3.to_checksum_address(token_address),
+                abi=ERC20_ABI
+            )
+            # Get the function data
+            call_data = token_contract.functions.balanceOf(address)._encode_transaction_data()
+            calls.append((
+                Web3.to_checksum_address(token_address),
+                call_data
+            ))
+
+        # Execute the multicall to fetch token balances
         _, return_data = multicall.functions.aggregate(calls).call()
 
+        # Process balances
         balances = {}
         
         # Add ETH balance
