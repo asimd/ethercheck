@@ -22,7 +22,7 @@ This project provides two Python scripts for checking Ethereum (ETH) and ERC-20 
 1. Clone this repository or download the script.
 
 2. Install the required Python packages:
-   ```
+   ```bash
    pip install web3 tqdm
    ```
 
@@ -37,39 +37,39 @@ This project provides two Python scripts for checking Ethereum (ETH) and ERC-20 
 
 ## Usage
 
-Script 1: ethereum_private_key_balance_checker.py
+### Script 1: ethereum_private_key_balance_checker.py
 
 This script checks balances for Ethereum addresses using private keys.
 
-1. Add a private keys to the file named ethereum_private_keys.txt. Add one Ethereum private key per line in this file.
+1. Add private keys to the file named `ethereum_private_keys.txt`. Add one Ethereum private key per line in this file.
 
 2. Run the script:
-
-bash
-python ethereum_private_key_balance_checker.py
+   ```bash
+   python ethereum_private_key_balance_checker.py
+   ```
 
 3. The script will process each private key, checking balances for ETH and all configured ERC-20 tokens.
 
 4. Progress will be displayed in the console, showing addresses that have balances.
 
-5. After completion, results will be saved in ethereum_and_token_balances.txt.
+5. After completion, results will be saved in `ethereum_and_token_balances.txt`.
 
-Script 2: ethereum_address_balance_checker.py
+### Script 2: ethereum_address_balance_checker.py
 
 This script checks balances for Ethereum addresses without needing private keys.
 
-1. Add addresses to the file named ethereum_addresses.txt. Add one Ethereum address per line in this file.
+1. Add addresses to the file named `ethereum_addresses.txt`. Add one Ethereum address per line in this file.
 
 2. Run the script:
-
-bash
-python ethereum_address_balance_checker.py
+   ```bash
+   python ethereum_address_balance_checker.py
+   ```
 
 3. The script will process each address, checking balances for ETH and all configured ERC-20 tokens.
 
 4. Progress will be displayed in the console, showing addresses that have balances.
 
-5. After completion, results will be saved in ethereum_balances.txt.
+5. After completion, results will be saved in `ethereum_balances.txt`.
 
 ## Output
 
