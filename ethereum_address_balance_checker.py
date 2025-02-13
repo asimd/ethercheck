@@ -1,16 +1,63 @@
 #!/usr/bin/env python3
 from web3 import Web3
+from eth_utils import to_checksum_address  # Add this import
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 import sys
 import json
+import os
+import warnings
+from urllib3.exceptions import InsecureRequestWarning
+from dotenv import load_dotenv
 
-# Infura Project ID
-INFURA_PROJECT_ID = ''
-INFURA_URL = f'https://mainnet.infura.io/v3/{INFURA_PROJECT_ID}'
+# Suppress SSL warnings
+warnings.simplefilter('ignore', InsecureRequestWarning)
 
-# Initialize Web3 with Infura endpoint
-w3 = Web3(Web3.HTTPProvider(INFURA_URL))
+# Load environment variables
+load_dotenv()
+
+class ConfigurationError(Exception):
+    """Raised when there's a configuration issue with the script"""
+    pass
+
+# Get Infura Project ID from environment
+INFURA_PROJECT_ID = os.getenv('INFURA_PROJECT_ID', '')
+
+def validate_configuration():
+    if not INFURA_PROJECT_ID or INFURA_PROJECT_ID in ['', 'your_infura_id_here', 'YOUR_INFURA_PROJECT_ID_HERE']:
+        raise ConfigurationError(
+            "\n⚠️  ERROR: No valid Infura Project ID configured!\n"
+            "Please add your Infura Project ID to the .env file:\n"
+            "1. Create a .env file in the project root\n"
+            "2. Add your Infura Project ID as: INFURA_PROJECT_ID=your_id_here\n"
+            "3. Make sure the .env file is in the same directory as this script\n"
+            "\nCurrent value is invalid or empty."
+        )
+
+class EthereumChecker:
+    def __init__(self):
+        self.w3 = None
+        
+    def initialize_web3(self):
+        """Initialize Web3 connection after configuration is validated"""
+        infura_url = f'https://mainnet.infura.io/v3/{INFURA_PROJECT_ID}'
+        self.w3 = Web3(Web3.HTTPProvider(
+            infura_url,
+            request_kwargs={
+                'verify': False,
+                'timeout': 30,
+            }
+        ))
+        
+        # Test connection
+        try:
+            self.w3.eth.block_number
+        except Exception as e:
+            raise ConfigurationError(
+                "\n⚠️  ERROR: Could not connect to Infura endpoint.\n"
+                f"Error details: {str(e)}\n"
+                "Please check your Project ID and internet connection."
+            )
 
 # Multicall contract address (Ethereum mainnet)
 MULTICALL_ADDRESS = '0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441'
@@ -62,7 +109,7 @@ def format_balance(balance, decimals):
 def get_all_balances(address):
     try:
         multicall = w3.eth.contract(address=MULTICALL_ADDRESS, abi=MULTICALL_ABI)
-
+        
         # Fetch ETH balance
         eth_balance = w3.eth.get_balance(address)
 
@@ -70,15 +117,13 @@ def get_all_balances(address):
         tokens = list(TOKENS_TO_CHECK.items())
         
         for token_name, token_address in tokens:
-            # Create contract instance for each token
             token_contract = w3.eth.contract(
-                address=Web3.to_checksum_address(token_address),
+                address=to_checksum_address(token_address),
                 abi=ERC20_ABI
             )
-            # Get the function data
             call_data = token_contract.functions.balanceOf(address)._encode_transaction_data()
             calls.append((
-                Web3.to_checksum_address(token_address),
+                to_checksum_address(token_address),
                 call_data
             ))
 
@@ -114,11 +159,10 @@ def get_all_balances(address):
 
 def process_address(address):
     try:
-        # Ensure the address is in checksum format
-        checksum_address = Web3.to_checksum_address(address)
+        # Use the imported to_checksum_address function
+        checksum_address = to_checksum_address(address)
         balances = get_all_balances(checksum_address)
         
-        # Only return addresses with any balances
         if balances and any(balances.values()):
             return (checksum_address, balances)
     except Exception as e:
@@ -134,35 +178,66 @@ def save_results_to_txt(results, filename='data/ethereum_address_balance.txt'):
             txtfile.write("\n")
     print(f"\nResults saved to {filename}")
 
+def ensure_data_directory():
+    """Create data directory if it doesn't exist"""
+    os.makedirs('data', exist_ok=True)
+
+def validate_input_file():
+    """Validate and create input file if it doesn't exist"""
+    input_file = 'data/ethereum_addresses.txt'
+    ensure_data_directory()
+    
+    if not os.path.exists(input_file):
+        with open(input_file, 'w') as f:
+            f.write("# Add your Ethereum addresses here (one per line)\n")
+            f.write("# Example:\n")
+            f.write("# 0x742d35Cc6634C0532925a3b844Bc454e4438f44e\n")
+        print(f"\n⚠️  Created {input_file}")
+        print("Please add your Ethereum addresses to this file and run the script again.")
+        sys.exit(1)
+    
+    with open(input_file, 'r') as f:
+        addresses = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+    
+    if not addresses:
+        print(f"\n⚠️  No addresses found in {input_file}")
+        print("Please add your Ethereum addresses to this file and run the script again.")
+        sys.exit(1)
+    
+    return addresses
+
 def main():
-    # Read Ethereum addresses from file
-    with open('data/ethereum_addresses.txt', 'r') as file:
-        addresses = [line.strip() for line in file if line.strip()]
-
-    results = []
-    total_addresses = len(addresses)
-
-    # Use ThreadPoolExecutor for concurrent processing
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(process_address, addr) for addr in addresses]
+    try:
+        # First validate configuration
+        validate_configuration()
         
-        with tqdm(total=total_addresses, desc="Checking addresses", unit="address") as pbar:
-            for future in as_completed(futures):
-                result = future.result()
-                if result:
-                    addr, balances = result
-                    results.append(result)
-                    print(f"\nFound balances for address: {addr}")
-                    for token, balance in balances.items():
-                        print(f"{token} Balance: {balance}")
-                pbar.update(1)
-                sys.stdout.flush()  # Ensure output is immediately displayed
+        # Then initialize Web3
+        checker = EthereumChecker()
+        checker.initialize_web3()
+        
+        # Continue with address checking
+        addresses = validate_input_file()
+        print(f"Checking {len(addresses)} addresses...")
+        
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = [executor.submit(process_address, addr) for addr in addresses]
+            
+            results = []
+            with tqdm(total=len(addresses), desc="Checking addresses", unit="address") as pbar:
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                    pbar.update(1)
+        
+        if results:
+            save_results_to_txt(results)
+        else:
+            print("\nNo addresses with balance found.")
 
-    # Save results to TXT
-    if results:
-        save_results_to_txt(results)
-    else:
-        print("\nNo addresses with balance found.")
+    except ConfigurationError as e:
+        print(str(e))
+        sys.exit(1)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
