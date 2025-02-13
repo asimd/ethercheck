@@ -1,105 +1,105 @@
-# 🔍 Ethereum Balance Checker
+# Ethereum Balance Checker Scripts
 
-A powerful Python-based tool for checking Ethereum (ETH) and ERC-20 token balances across multiple addresses. This project provides two distinct scripts for different use cases - one for checking balances using private keys and another using Ethereum addresses directly.
+A set of Python scripts to check ETH and ERC-20 token balances for Ethereum addresses and private keys.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python Version](https://img.shields.io/badge/python-3.7%2B-blue)
 ![Web3.py](https://img.shields.io/badge/web3.py-latest-green)
 
-## ✨ Features
+## 🚀 Features
 
-- 💰 Check ETH balance for multiple Ethereum addresses
-- 🪙 Support for 100+ popular ERC-20 tokens
-- ⚡ Concurrent processing for lightning-fast results
-- 🎯 Precise handling of tokens with different decimal places
-- 📊 Clean, formatted output for easy readability
-- 📈 Real-time progress tracking
-- 💾 Automatic results saving to file
+- Check ETH balance for multiple addresses/private keys
+- Check balances for 100+ popular ERC-20 tokens
+- Detects even tiny dust amounts of ETH (down to 1 wei)
+- Concurrent processing for faster results
+- Progress bar to track checking process
+- Formatted output for easy readability
+- Results saved to text files
+- Non-destructive operation (keeps input files intact)
 
-## 🚀 Getting Started
-
-### Prerequisites
+## 📋 Prerequisites
 
 - Python 3.7 or higher
 - pip (Python package installer)
-- An Infura account (free)
 
-### Installation
+## 🛠️ Setup
 
-1. Clone the repository:
+1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/ethereum-balance-checker.git
-   cd ethereum-balance-checker
+   git clone https://github.com/asimd/ethercheck.git
+   cd ethercheck
    ```
 
 2. Install required packages:
    ```bash
-   pip install web3 tqdm
+   pip3 install web3 tqdm python-dotenv
    ```
 
-3. Set up your Infura credentials:
-   - Sign up for a free account at [Infura](https://infura.io/)
-   - Create a new project and copy your Project ID
-   - Replace `INFURA_PROJECT_ID` in the script with your Project ID:
-     ```python
-     INFURA_PROJECT_ID = 'YOUR_INFURA_PROJECT_ID_HERE'
-     ```
-
-## 📚 Usage
-
-### Script 1: Private Key Balance Checker
-
-1. Create a text file named `ethereum_private_keys.txt` and add your private keys (one per line)
-2. Run the script:
+3. Create your environment file:
    ```bash
-   python ethereum_private_key_balance_checker.py
+   cp .env.example .env
    ```
-3. Results will be saved in `ethereum_and_token_balances.txt`
 
-### Script 2: Address Balance Checker
+4. Add your Infura Project IDs to `.env`:
+   ```
+   INFURA_PROJECT_IDS=your_project_id_1,your_project_id_2,your_project_id_3
+   ```
+   Note: Multiple IDs are recommended to handle rate limiting
 
-1. Create a text file named `ethereum_addresses.txt` and add your Ethereum addresses (one per line)
-2. Run the script:
+5. Create input files in the `data` directory if they don't exist:
+   - For addresses: `data/ethereum_addresses.txt`
+   - For private keys: `data/ethereum_private_keys.txt`
+
+## 💻 Usage
+
+### Run the interactive menu:
    ```bash
-   python ethereum_address_balance_checker.py
+   python3 main.py
    ```
-3. Results will be saved in `ethereum_balances.txt`
+
+### Choose from the following options:
+
+1. Check Private Keys
+2. Check Addresses
+3. Exit
+
+## 📝 Input Files Format
+### Private Keys (data/ethereum_private_keys.txt):
+One private key per line (64 hex characters)
+0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+### Addresses (data/ethereum_addresses.txt):
+One address per line
+0x123456789abcdef0123456789abcdef0123456789abcdef
 
 ## 📝 Output Format
 
-The balance information is displayed in the console and saved to a text file in the following format:
+Results are displayed in the console and saved to text files:
+- Address checker: `data/ethereum_address_balance.txt`
+- Private key checker: `data/ethereum_and_token_balances.txt`
 
-```
-Found balances for address: 0x1234...5678
-Private Key: 0xabcd...efgh
-ETH Balance: 1.2345
-USDT Balance: 100.0000
-USDC Balance: 50.5000
-... (other token balances)
-```
+The script will detect and display:
+- Any non-zero ETH balance (even dust amounts)
+- Any ERC-20 token balances
+- Formatted amounts based on balance size:
+  - < 1 Gwei: 18 decimal places
+  - < 0.00001 ETH: 12 decimal places
+  - < 1 ETH: 8 decimal places
+  - ≥ 1 ETH: 6 decimal places
 
 ## ⚙️ Customization
 
 You can customize the script behavior by modifying these variables:
 
 - `TOKENS_TO_CHECK`: Add or remove ERC-20 tokens to check
-- `MIN_BALANCE`: Adjust the minimum balance threshold for display
 - `TOKEN_DECIMALS`: Modify decimal places for specific tokens
-
-```python
-TOKENS_TO_CHECK = {
-    'USDT': '0xdac17f958d2ee523a2206206994597c13d831ec7',
-    'USDC': '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-    # Add more tokens here
-}
-```
 
 ## 🔒 Security Considerations
 
-- When using `ethereum_private_key_balance_checker.py`, ensure you're in a secure environment
-- Never share your private keys or the resulting output files
-- Keep your Infura Project ID confidential
-- Consider using a hardware wallet for additional security
+- Never share your private keys
+- Use this tool in a secure environment
+- Verify addresses and balances independently
+- Keep your .env file secure and never commit it to version control
 
 ## ⚠️ Disclaimer
 
