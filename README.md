@@ -2,10 +2,6 @@
 
 A set of Python scripts to check ETH and ERC-20 token balances for Ethereum addresses and private keys.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python Version](https://img.shields.io/badge/python-3.7%2B-blue)
-![Web3.py](https://img.shields.io/badge/web3.py-latest-green)
-
 ## 🚀 Features
 
 - Check ETH balance for multiple addresses/private keys
@@ -46,7 +42,7 @@ A set of Python scripts to check ETH and ERC-20 token balances for Ethereum addr
    ```
    Note: Multiple IDs are recommended to handle rate limiting
 
-5. Create input files in the `data` directory if they don't exist:
+5. Create input files in the `data` directory:
    - For addresses: `data/ethereum_addresses.txt`
    - For private keys: `data/ethereum_private_keys.txt`
 
@@ -64,13 +60,20 @@ A set of Python scripts to check ETH and ERC-20 token balances for Ethereum addr
 3. Exit
 
 ## 📝 Input Files Format
-### Private Keys (data/ethereum_private_keys.txt):
+#### Private Keys (data/ethereum_private_keys.txt):
 One private key per line (64 hex characters)
+```
 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg
+```
 
-### Addresses (data/ethereum_addresses.txt):
+#### Addresses (data/ethereum_addresses.txt):
 One address per line
+
+```
 0x123456789abcdef0123456789abcdef0123456789abcdef
+0x123456789abcdef0123456789abcdef0123456789abcdec
+```
 
 ## 📝 Output Format
 
