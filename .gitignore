@@ -28,3 +28,5 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db 
+data/ethereum_address_balance.txt
+data/ethereum_and_token_balances.txt

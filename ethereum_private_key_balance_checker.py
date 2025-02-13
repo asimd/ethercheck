@@ -297,7 +297,6 @@ def get_all_balances(address):
 
         # Fetch ETH balance
         eth_balance = w3.eth.get_balance(address)
-        print(f"Debug - ETH balance for {address}: {eth_balance}")  # Add debug print
 
         calls = []
         tokens = list(TOKENS_TO_CHECK.items())
@@ -318,7 +317,6 @@ def get_all_balances(address):
 
         # Process the ETH and token balances
         balances = process_balances(eth_balance, return_data)
-        print(f"Debug - Processed balances: {balances}")  # Add debug print
         return balances
     
     except Exception as e:
@@ -377,20 +375,11 @@ def process_key(private_key):
     return None
 
 def display_results(results):
-    """Display results in a formatted way in the console"""
-    if not results:
-        print("\n🔍 No addresses with balances found.")
-        return
-
-    print("\n🔍 Found balances in the following addresses:")
+    print("\n🎉 Found balances:")
     print("=" * 80)
     
-    for addr, balances, _ in results:
-        if not balances:
-            continue
-            
-        print(f"\n📍 Address: {addr}")
-        print("-" * 80)
+    for addr, balances, priv in results:
+        print(f"\n📍 Address: {addr} | Private Key: {priv}")
         
         # Display ETH balance first if it exists
         if 'ETH' in balances:
@@ -407,8 +396,8 @@ def display_results(results):
     print(f"💾 Results saved to: data/ethereum_and_token_balances.txt")
 
 def save_results_to_txt(results, filename='data/ethereum_and_token_balances.txt'):
-    with open(filename, 'a') as txtfile:
-        txtfile.write("\n" + "=" * 80 + "\n")
+    with open(filename, 'w') as txtfile:
+        txtfile.write("=" * 80 + "\n")
         for addr, balances, priv in results:
             txtfile.write(f"\nAddress: {addr}\n")
             txtfile.write(f"Private Key: {priv}\n")
@@ -417,11 +406,11 @@ def save_results_to_txt(results, filename='data/ethereum_and_token_balances.txt'
             # Write ETH balance first if it exists
             if 'ETH' in balances:
                 txtfile.write(f"ETH: {balances['ETH']}\n")
-                del balances['ETH']
             
             # Write other token balances
             for token, amount in balances.items():
-                txtfile.write(f"{token}: {amount}\n")
+                if token != 'ETH':
+                    txtfile.write(f"{token}: {amount}\n")
             txtfile.write("-" * 40 + "\n")
 
 def main():

@@ -106,7 +106,7 @@ def format_balance(balance, decimals):
     else:
         return f"{adjusted_balance:.4f}"
 
-def get_all_balances(address):
+def get_all_balances(address, w3):
     try:
         multicall = w3.eth.contract(address=MULTICALL_ADDRESS, abi=MULTICALL_ABI)
         
@@ -157,11 +157,11 @@ def get_all_balances(address):
         print(f"Error getting balances for {address}: {e}")
         return None
 
-def process_address(address):
+def process_address(address, w3):
     try:
         # Use the imported to_checksum_address function
         checksum_address = to_checksum_address(address)
-        balances = get_all_balances(checksum_address)
+        balances = get_all_balances(checksum_address, w3)
         
         if balances and any(balances.values()):
             return (checksum_address, balances)
@@ -169,14 +169,43 @@ def process_address(address):
         print(f"Error processing address: {e}")
     return None
 
+def display_results(results):
+    print("\n🎉 Found balances:")
+    print("=" * 80)
+    
+    for addr, balances in results:
+        print(f"\n📍 Address: {addr}")
+        
+        # Display ETH balance first if it exists
+        if 'ETH' in balances:
+            print(f"  • ETH: {balances['ETH']} ETH")
+        
+        # Display other token balances
+        for token, amount in balances.items():
+            if token != 'ETH':
+                print(f"  • {token}: {amount} {token}")
+        
+        print("-" * 80)
+
+    print(f"\n✨ Total addresses with balances: {len(results)}")
+    print(f"💾 Results saved to: data/ethereum_address_balance.txt")
+
 def save_results_to_txt(results, filename='data/ethereum_address_balance.txt'):
     with open(filename, 'w') as txtfile:
+        txtfile.write("=" * 80 + "\n")
         for addr, balances in results:
-            txtfile.write(f"Address: {addr}\n")
-            for token, balance in balances.items():
-                txtfile.write(f"{token} Balance: {balance}\n")
-            txtfile.write("\n")
-    print(f"\nResults saved to {filename}")
+            txtfile.write(f"\nAddress: {addr}\n")
+            txtfile.write("-" * 40 + "\n")
+            
+            # Write ETH balance first if it exists
+            if 'ETH' in balances:
+                txtfile.write(f"ETH: {balances['ETH']}\n")
+            
+            # Write other token balances
+            for token, amount in balances.items():
+                if token != 'ETH':
+                    txtfile.write(f"{token}: {amount}\n")
+            txtfile.write("-" * 40 + "\n")
 
 def ensure_data_directory():
     """Create data directory if it doesn't exist"""
@@ -220,7 +249,7 @@ def main():
         print(f"Checking {len(addresses)} addresses...")
         
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(process_address, addr) for addr in addresses]
+            futures = [executor.submit(process_address, addr, checker.w3) for addr in addresses]
             
             results = []
             with tqdm(total=len(addresses), desc="Checking addresses", unit="address") as pbar:
@@ -232,8 +261,9 @@ def main():
         
         if results:
             save_results_to_txt(results)
+            display_results(results)
         else:
-            print("\nNo addresses with balance found.")
+            print("\n🔍 No addresses with balance found.")
 
     except ConfigurationError as e:
         print(str(e))
